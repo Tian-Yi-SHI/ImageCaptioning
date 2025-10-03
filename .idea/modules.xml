@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/../AIMS5701/.idea/AIMS5701.iml" filepath="$PROJECT_DIR$/../AIMS5701/.idea/AIMS5701.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ImageCaptioning.iml" filepath="$PROJECT_DIR$/.idea/ImageCaptioning.iml" />
+    </modules>
+  </component>
+</project>

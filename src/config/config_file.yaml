@@ -1,0 +1,15 @@
+##################### Storage #####################
+dataset_name : "image"
+folder_image : "./storage/dataset"
+folder_train_log : "./storage/log"
+folder_test_log : "./storage/log"
+folder_model : "./storage/model"
+
+##################### Architecture #####################
+load_model_trained : False
+
+##################### Hyper Params #####################
+lr : 0.001
+wd : 0.01
+batch_size : 10
+epoches : 30

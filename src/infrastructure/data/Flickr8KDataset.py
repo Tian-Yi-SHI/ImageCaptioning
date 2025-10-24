@@ -5,10 +5,10 @@ from torch.utils.data import Dataset
 
 class Flickr8KDataset(Dataset):
     """
-    Flickr8K Dataset
+    Flickr8K Dataset wwithout transform method
     return images and captions
     """
-    def __init__(self, folder_path_image, file_path_caption, transform=None):
+    def __init__(self, folder_path_image, file_path_caption):
         """
         Args:
             folder_path_image: image folder path
@@ -16,7 +16,6 @@ class Flickr8KDataset(Dataset):
             transform: image transform method
         """
         self.folder_path_image = folder_path_image
-        self.transform = transform
         
         self.captions_df = pd.read_csv(file_path_caption)
         
@@ -60,31 +59,15 @@ class Flickr8KDataset(Dataset):
         # read image
         image = Image.open(image_path).convert('RGB')
         
-        # transform
-        if self.transform is not None:
-            image = self.transform(image)
-        
         return image, captions, image_name
     
 from torchvision import transforms
 
 if __name__ == "__main__":
-    # transform
-    transform = transforms.Compose([
-        transforms.Resize((256, 256)),
-        transforms.RandomCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
-        )
-    ])
-
     # initialization
     dataset = Flickr8KDataset(
         folder_path_image="./storage/dataset/archive/images",
         file_path_caption="./storage/dataset/captions/captions.txt",
-        transform=transform
     )
 
     # test

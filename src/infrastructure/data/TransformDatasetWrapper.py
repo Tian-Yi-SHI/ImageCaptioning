@@ -9,18 +9,21 @@ from torch.utils.data import Dataset, Subset
 
 class TransformDatasetWrapper(Dataset):
     """
-    Wrapper to Transform images in Dataset
+    Wrapper for Transforming Images in Dataset
+    The Wrapper can be applied to either original dataset or subsets
     
-    Situations：
-    - Original Dataset with no transform method or need to be covered
-    - set specific transform method for subset
+    Situation：
+    - Original Dataset with no transform method
+    - Specific Transform method designed for subsets
     """
-    def __init__(self, dataset, transform=None):
+    def __init__(self, dataset, transform):
         """
         Args:
             dataset: original dataset
             transform: transform method
         """
+        if transform is None:
+            raise RuntimeError("no valid transform method")
         self.dataset = dataset
         self.transform = transform
 

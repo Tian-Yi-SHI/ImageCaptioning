@@ -20,7 +20,7 @@ def read_config(config_path="./src/config/config_file.yaml") -> tuple:
     Args:
       config_path: path of configuration file(yaml)
     Return:
-      folder_args: storage folder
+      folder_args: storage folder and file
       hyper_args: hyper params
       flag_args: testing and training flags
     '''
@@ -37,6 +37,7 @@ def read_config(config_path="./src/config/config_file.yaml") -> tuple:
     folder_args = {
         "dataset_name": config.get("dataset_name"),
         "folder_image": config.get("folder_image"),
+        "file_caption": config.get("file_caption"),
         "folder_train_log": config.get("folder_train_log"),
         "folder_test_log": config.get("folder_test_log"),
         "folder_model": config.get("folder_model")

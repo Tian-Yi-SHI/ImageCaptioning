@@ -1,6 +1,7 @@
 ##################### Storage #####################
 dataset_name : "image"
-folder_image : "./storage/dataset"
+folder_image : "./storage/dataset/archive/images"
+file_caption : "./storage/dataset/captions/captions.txt"
 folder_train_log : "./storage/log"
 folder_test_log : "./storage/log"
 folder_model : "./storage/model"

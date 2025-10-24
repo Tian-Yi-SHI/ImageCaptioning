@@ -18,15 +18,24 @@ class Flickr8KDataset(Dataset):
         self.folder_path_image = folder_path_image
         self.transform = transform
         
-        # read caption file
         self.captions_df = pd.read_csv(file_path_caption)
         
-        # group captions by image name
-        # format：{image_name: [caption1, caption2, ..., caption5]}
-        self.image_captions = self.captions_df.groupby('image')['caption'].apply(list).to_dict()
+        # available image names
+        if not os.path.isdir(folder_path_image):
+            raise NotADirectoryError(f"图片文件夹路径无效：{folder_path_image}")
+        actual_image_names = set(os.listdir(folder_path_image))
         
-        # image name
+        # filter caption file
+        self.captions_df['image_exists'] = self.captions_df['image'].isin(actual_image_names)
+        filtered_df = self.captions_df[self.captions_df['image_exists']].copy()
+        
+        # available images
+        self.image_captions = filtered_df.groupby('image')['caption'].apply(list).to_dict()
         self.image_names = list(self.image_captions.keys())
+        
+        # check
+        if not self.image_names:
+            raise ValueError("no image available")
 
     def __len__(self):
         """return the total num of images"""
@@ -57,31 +66,34 @@ class Flickr8KDataset(Dataset):
         
         return image, captions, image_name
     
-# from config.config import *
 from torchvision import transforms
 
-# transform
-transform = transforms.Compose([
-    transforms.Resize((256, 256)),
-    transforms.RandomCrop(224),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225]
+if __name__ == "__main__":
+    # transform
+    transform = transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.RandomCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225]
+        )
+    ])
+
+    # initialization
+    dataset = Flickr8KDataset(
+        folder_path_image="./storage/dataset/archive/images",
+        file_path_caption="./storage/dataset/captions/captions.txt",
+        transform=transform
     )
-])
 
-# initialization
-dataset = Flickr8KDataset(
-    folder_path_image="./storage/dataset/archive/images",
-    file_path_caption="./storage/dataset/captions/captions.txt",
-    transform=transform
-)
-
-# test
-image, captions, image_name = dataset[0]
-print(f"image name: {image_name}")
-print(f"shape: {image.shape}")
-print(f"corresponding captions: {len(captions)} in total")
-for i, cap in enumerate(captions, 1):
-    print(f"  caption {i}: {cap}")
+    # test
+    for i in range(len(dataset)):
+        image, captions, image_name = dataset[i]
+        print(i)
+    image, captions, image_name = dataset[0]
+    print(f"image name: {image_name}")
+    print(f"shape: {image.shape}")
+    print(f"corresponding captions: {len(captions)} in total")
+    for i, cap in enumerate(captions, 1):
+        print(f"  caption {i}: {cap}")

@@ -1,16 +1,16 @@
 ##################### Storage #####################
 dataset_name : "image"
-folder_image : "./storage/dataset/archive/images"
+folder_image : "./storage/dataset/archive/Images"
 file_caption : "./storage/dataset/captions/captions.txt"
 folder_train_log : "./storage/log"
 folder_test_log : "./storage/log"
 folder_model : "./storage/model"
 
 ##################### Architecture #####################
-load_model_trained : False
+load_model_trained : False  # 设置为False重新训练，True跳过训练
 
 ##################### Hyper Params #####################
-lr : 0.001
+lr : 0.003  # 降低到0.003，更稳定的训练
 wd : 0.01
-batch_size : 10
-epoches : 30
+batch_size : 64  # CPU上可以加大batch_size加快训练（如果内存允许）
+epoches : 25  # CPU训练，减少到25个epoch（但仍然需要充分训练）

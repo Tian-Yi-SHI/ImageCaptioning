@@ -19,13 +19,15 @@
 
 ```
 ImageCaptioning/
-├── src/                    # 源代码
-│   ├── config/            # 配置管理
-│   ├── core/              # 核心业务逻辑
-│   ├── model/             # 模型实现
-│   └── api/               # API接口
-├── dataset/          # 数据集
-└── README.md             # 项目文档
+├── src/
+│   ├── cli/            # 命令行入口
+│   ├── config/         # 配置与设备管理
+│   ├── data/           # 数据集封装与图像变换
+│   ├── models/         # 模型实现
+│   ├── pipeline/       # 训练与推理流水线
+│   └── utils/          # 公共工具与评估指标
+├── storage/            # 数据集、模型与日志
+└── README.md
 ```
 
 ## 开发计划

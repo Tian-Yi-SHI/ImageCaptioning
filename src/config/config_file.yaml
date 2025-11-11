@@ -12,5 +12,5 @@ load_model_trained : False  # 设置为False重新训练，True跳过训练
 ##################### Hyper Params #####################
 lr : 0.003  # 降低到0.003，更稳定的训练
 wd : 0.01
-batch_size : 64  # CPU上可以加大batch_size加快训练（如果内存允许）
-epoches : 25  # CPU训练，减少到25个epoch（但仍然需要充分训练）
+batch_size : 32  # 16G内存，使用32批次大小以避免内存溢出
+epoches : 100  # 至少100轮训练，每5轮保存一次checkpoint

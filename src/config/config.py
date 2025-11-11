@@ -38,7 +38,7 @@ def read_config(config_path=None) -> tuple:
             project_root = os.path.dirname(os.path.dirname(current_dir))
             config_path = os.path.join(project_root, "src", "config", "config_file.yaml")
     
-    config_path = Path(config_path)
+    config_path = Path(config_path).resolve()
     if not config_path.exists():
         raise FileNotFoundError(f"configuration file {config_path} not exist. Please check the path.")
     
@@ -49,9 +49,13 @@ def read_config(config_path=None) -> tuple:
         except yaml.YAMLError as exc:
          print(exc)
     
-    # 获取项目根目录（假设配置文件在src/config/下）
-    config_dir = os.path.dirname(os.path.abspath(config_path))
-    project_root = os.path.dirname(os.path.dirname(config_dir))
+    # 获取项目根目录（自动向上查找包含 src 目录的路径）
+    config_dir = config_path.parent
+    project_root = config_dir
+    for parent in config_dir.parents:
+        if (parent / "src").exists():
+            project_root = parent
+            break
     
     # 处理相对路径，转换为绝对路径（相对于项目根目录）
     def resolve_path(path, project_root=project_root):

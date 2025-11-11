@@ -4,7 +4,8 @@
 """
 import torch
 from typing import List, Tuple, Any
-from utils.vocabulary import Vocabulary
+
+from .vocabulary import Vocabulary
 
 
 def collate_fn(batch: List[Tuple[Any, List[str], str]], 

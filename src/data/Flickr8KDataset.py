@@ -74,6 +74,16 @@ class Flickr8KDataset(Dataset):
         
         return image, captions, image_name
 
+    def get_captions_by_index(self, idx):
+        """在不加载图像的情况下返回指定索引的caption信息"""
+        image_name = self.image_names[idx]
+        captions = self.image_captions[image_name]
+        return captions, image_name
+
+    def get_all_captions(self):
+        """返回图像名称到caption列表的映射，请勿在外部原地修改"""
+        return self.image_captions
+
 
 if __name__ == "__main__":
     # initialization

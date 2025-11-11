@@ -1,15 +1,10 @@
 import numpy as np
-import os
-import sys
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir)
-from infrastructure.data.Flickr8KDataset import Flickr8KDataset
-from infrastructure.data.TransformDatasetWrapper import TransformDatasetWrapper
+from data.Flickr8KDataset import Flickr8KDataset
+from data.TransformDatasetWrapper import TransformDatasetWrapper
 
 def split_dataset(dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, random_seed=42):
     """

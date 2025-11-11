@@ -66,7 +66,8 @@ class Pipeline:
         }
         self.is_params_ready = True
 
-    def train(self, train_loader: Any, val_loader: Optional[Any] = None) -> dict:
+    def train(self, train_loader: Any, val_loader: Optional[Any] = None, 
+              checkpoint_path: Optional[str] = None, checkpoint_dir: Optional[str] = None) -> dict:
         """
         Defines training workflow skeleton.
         Subclasses implement specific training logic in _train_core.
@@ -74,22 +75,27 @@ class Pipeline:
         Args:
             train_loader: Data loader for training data
             val_loader: Optional data loader for validation data
+            checkpoint_path: checkpoint文件路径（如果提供，则从该checkpoint恢复训练）
+            checkpoint_dir: checkpoint保存目录（如果提供，每5轮保存一次checkpoint）
         Return: Dictionary of training results
         """
         # validation
         self._check_train_ready()
 
         # core training logic
-        return self._train_core(train_loader, val_loader)
+        return self._train_core(train_loader, val_loader, checkpoint_path, checkpoint_dir)
 
     @abstractmethod
-    def _train_core(self, train_loader: Any, val_loader: Optional[Any] = None) -> dict:
+    def _train_core(self, train_loader: Any, val_loader: Optional[Any] = None, 
+                    checkpoint_path: Optional[str] = None, checkpoint_dir: Optional[str] = None) -> dict:
         """
         Subclasses implement specific training logic here.
         
         Args:
             train_loader: Data loader for training data
             val_loader: Optional data loader for validation data
+            checkpoint_path: checkpoint文件路径（如果提供，则从该checkpoint恢复训练）
+            checkpoint_dir: checkpoint保存目录（如果提供，每5轮保存一次checkpoint）
         Return: Dictionary of training results
         """
         raise NotImplementedError("Subclasses must implement the _train_core method")

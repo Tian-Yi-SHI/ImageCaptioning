@@ -15,6 +15,12 @@ from .Pipeline import Pipeline
 from models.ImageCaptionModel import ImageCaptionModel
 from utils.vocabulary import Vocabulary
 from utils.metrics import calculate_bleu_scores
+from utils.diagnose_model import (
+    check_model_output_distribution,
+    check_gradient_flow,
+    check_image_features,
+    print_diagnosis
+)
 from config.config import define_dev
 
 
@@ -88,6 +94,13 @@ class PipelineIC(Pipeline):
         # 将模型移到设备
         self.model = self.model.to(self.device)
         
+        # MPS优化：MPS不支持torch.compile，跳过编译
+        # 但可以设置一些MPS特定的优化
+        if self.device.type == 'mps':
+            # MPS优化：设置一些环境变量（如果需要）
+            # 注意：torch.compile在MPS上不支持，会报错或降级到CPU
+            pass
+        
         # 标记模型已准备
         self._mark_model_ready()
         
@@ -123,11 +136,11 @@ class PipelineIC(Pipeline):
         n_epoch = self.training_params['n_epoch']
         lr = self.training_params['lr']
         wd = self.training_params['wd']
+        early_stop_patience = self.training_params.get('early_stop_patience', 0)  # 早停patience，0表示禁用
         
         # 设置优化器（按照《Show and Tell》论文）
-        # 论文：SGD without momentum，但实际中Adam通常更好
-        # 这里提供两种选择：SGD（论文配置）或Adam（推荐）
-        use_sgd = False  # 设置为True使用SGD（论文配置），False使用Adam（推荐）
+        # 论文：SGD without momentum，固定学习率
+        use_sgd = True  # 论文配置：使用SGD without momentum
         
         if use_sgd:
             # 论文配置：SGD without momentum
@@ -138,11 +151,17 @@ class PipelineIC(Pipeline):
         else:
             # 推荐配置：Adam（通常效果更好）
             optimizer = optim.Adam(self.model.parameters(), lr=lr, weight_decay=wd)
-            # 学习率调度器（注意：verbose参数在新版PyTorch中已移除）
-            # factor=0.8: 每次降低20%（更温和），patience=3: 验证损失3个epoch不降才降低学习率
-            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, mode='min', factor=0.8, patience=3, min_lr=1e-5
-            )
+            # 学习率调度器：更激进的策略，帮助跳出局部最优点
+            # factor=0.5: 每次降低50%（更激进），patience=2: 验证损失2个epoch不降就降低学习率
+            try:
+                scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer, mode='min', factor=0.5, patience=2, min_lr=1e-6, verbose=True
+                )
+            except TypeError:
+                # 如果verbose参数不支持，去掉它
+                scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer, mode='min', factor=0.5, patience=2, min_lr=1e-6
+                )
             print("使用Adam优化器（推荐，效果通常更好）")
         
         # 损失函数（忽略PAD token）
@@ -151,6 +170,8 @@ class PipelineIC(Pipeline):
         # 训练历史
         best_val_loss = float('inf')
         start_epoch = 1
+        # 早停机制：跟踪连续没有改善的epoch数
+        epochs_without_improvement = 0
         
         # 如果提供了checkpoint路径，尝试加载checkpoint恢复训练
         if checkpoint_path and os.path.exists(checkpoint_path):
@@ -195,6 +216,10 @@ class PipelineIC(Pipeline):
         if checkpoint_dir:
             print(f"Checkpoint保存目录: {checkpoint_dir}")
             print(f"每5轮保存一次checkpoint")
+        if val_loader and early_stop_patience > 0:
+            print(f"早停机制: 启用 (patience={early_stop_patience})")
+        elif val_loader:
+            print(f"早停机制: 禁用")
         print("-" * 60)
         
         for epoch in range(start_epoch, n_epoch + 1):
@@ -205,9 +230,13 @@ class PipelineIC(Pipeline):
             
             train_pbar = tqdm(train_loader, desc=f"Epoch {epoch}/{n_epoch} [Train]")
             for images, captions, caption_lengths, image_names in train_pbar:
-                # 移到设备
-                images = images.to(self.device)
-                captions = captions.to(self.device)
+                # MPS优化：MPS不支持non_blocking，使用同步传输
+                if self.device.type == 'mps':
+                    images = images.to(self.device)
+                    captions = captions.to(self.device)
+                else:
+                    images = images.to(self.device, non_blocking=True)
+                    captions = captions.to(self.device, non_blocking=True)
                 
                 # 前向传播
                 optimizer.zero_grad()
@@ -222,8 +251,8 @@ class PipelineIC(Pipeline):
                 
                 # 反向传播
                 loss.backward()
-                # 梯度裁剪：提高max_norm到5.0，允许更大的梯度
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=5.0)
+                # 梯度裁剪：使用更严格的梯度裁剪，防止梯度爆炸，帮助稳定训练
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 optimizer.step()
                 
                 # 记录损失
@@ -237,9 +266,9 @@ class PipelineIC(Pipeline):
             self.train_history['train_loss'].append(avg_train_loss)
             self.train_history['learning_rate'].append(optimizer.param_groups[0]['lr'])
             
-            # 验证阶段（每2个epoch验证一次，加快训练）
+            # 验证阶段（M4优化：每5个epoch验证一次，加快训练速度）
             val_loss = None
-            if val_loader and (epoch % 2 == 0 or epoch == 1 or epoch == n_epoch):
+            if val_loader and (epoch % 5 == 0 or epoch == 1 or epoch == n_epoch):
                 self.model.eval()
                 val_loss = 0.0
                 val_batches = 0
@@ -248,8 +277,12 @@ class PipelineIC(Pipeline):
                     # 使用disable=False但减少详细输出
                     val_pbar = tqdm(val_loader, desc=f"Epoch {epoch}/{n_epoch} [Val]", leave=False)
                     for images, captions, caption_lengths, image_names in val_pbar:
-                        images = images.to(self.device)
-                        captions = captions.to(self.device)
+                        if self.device.type == 'mps':
+                            images = images.to(self.device)
+                            captions = captions.to(self.device)
+                        else:
+                            images = images.to(self.device, non_blocking=True)
+                            captions = captions.to(self.device, non_blocking=True)
                         
                         outputs = self.model(images, captions, caption_lengths)
                         targets = captions[:, 1:]
@@ -269,10 +302,16 @@ class PipelineIC(Pipeline):
                 if scheduler is not None:
                     scheduler.step(avg_val_loss)
                 
-                # 保存最佳模型
+                # 保存最佳模型和早停检查
                 if avg_val_loss < best_val_loss:
                     best_val_loss = avg_val_loss
+                    epochs_without_improvement = 0  # 重置计数器
                     print(f"  ✓ 验证损失改善，保存最佳模型 (val_loss: {avg_val_loss:.4f})")
+                else:
+                    # 验证损失没有改善
+                    epochs_without_improvement += 1
+                    if early_stop_patience > 0:
+                        print(f"  ⚠️  验证损失未改善 ({epochs_without_improvement}/{early_stop_patience} epochs)")
             else:
                 # 如果没有验证，使用训练损失作为调度器输入（避免报错）
                 if val_loader and scheduler is not None:
@@ -291,16 +330,140 @@ class PipelineIC(Pipeline):
                 )
                 print(f"  ✓ 已保存checkpoint: {checkpoint_file}")
             
+            # 每20个epoch进行一次模型诊断
+            if epoch % 20 == 0 and val_loader is not None:
+                print(f"\n{'=' * 60}")
+                print(f"模型诊断 - Epoch {epoch}")
+                print(f"{'=' * 60}")
+                
+                # 执行诊断（不影响训练流程）
+                diagnosis_results = {}
+                
+                # 1. 检查输出分布（使用验证集）
+                try:
+                    output_dist = check_model_output_distribution(
+                        self.model, val_loader, self.vocabulary, self.device, num_samples=50
+                    )
+                    diagnosis_results['output_distribution'] = output_dist
+                except Exception as e:
+                    print(f"  ⚠️  输出分布检查失败: {e}")
+                
+                # 2. 检查梯度流（需要先进行一次前向和反向传播）
+                try:
+                    # 临时进行一次前向传播以获取梯度
+                    self.model.train()
+                    sample_batch = next(iter(train_loader))
+                    images_sample = sample_batch[0].to(self.device)
+                    captions_sample = sample_batch[1].to(self.device)
+                    caption_lengths_sample = sample_batch[2]
+                    
+                    optimizer.zero_grad()
+                    outputs_sample = self.model(images_sample, captions_sample, caption_lengths_sample)
+                    targets_sample = captions_sample[:, 1:]
+                    outputs_sample = outputs_sample.reshape(-1, outputs_sample.size(-1))
+                    targets_sample = targets_sample.reshape(-1)
+                    loss_sample = criterion(outputs_sample, targets_sample)
+                    loss_sample.backward()
+                    
+                    # 检查梯度流
+                    grad_flow = check_gradient_flow(self.model)
+                    diagnosis_results['gradient_flow'] = grad_flow
+                    
+                    # 清理梯度（确保不影响后续训练）
+                    optimizer.zero_grad()
+                except Exception as e:
+                    print(f"  ⚠️  梯度流检查失败: {e}")
+                    # 确保清理梯度
+                    optimizer.zero_grad()
+                
+                # 3. 检查图像特征（使用验证集）
+                try:
+                    image_feat = check_image_features(
+                        self.model, val_loader, self.device, num_samples=20
+                    )
+                    diagnosis_results['image_features'] = image_feat
+                except Exception as e:
+                    print(f"  ⚠️  图像特征检查失败: {e}")
+                
+                # 打印诊断结果
+                if diagnosis_results:
+                    print_diagnosis(diagnosis_results)
+                    
+                    # 保存诊断结果到文件
+                    if checkpoint_dir:
+                        import json
+                        diagnosis_file = os.path.join(checkpoint_dir, f'diagnosis_epoch_{epoch}.json')
+                        # 将numpy数组转换为列表以便JSON序列化
+                        diagnosis_save = {}
+                        for key, value in diagnosis_results.items():
+                            if key == 'output_distribution':
+                                diagnosis_save[key] = {
+                                    'repetition_rate': float(value.get('repetition_rate', 0)),
+                                    'unique_sequences': value.get('unique_sequences', 0),
+                                    'total_samples': value.get('total_samples', 0),
+                                    'position_diversity': {
+                                        str(k): {
+                                            'unique_words': v['unique_words'],
+                                            'most_common_word': v['most_common_word'],
+                                            'most_common_freq': float(v['most_common_freq']),
+                                            'total_samples': v['total_samples']
+                                        }
+                                        for k, v in value.get('position_diversity', {}).items()
+                                    }
+                                }
+                            elif key == 'gradient_flow':
+                                diagnosis_save[key] = {
+                                    name: {
+                                        'norm': float(stat['norm']),
+                                        'mean': float(stat['mean']),
+                                        'std': float(stat['std']),
+                                        'max': float(stat['max']),
+                                        'min': float(stat['min'])
+                                    }
+                                    for name, stat in value.items()
+                                }
+                            elif key == 'image_features':
+                                diagnosis_save[key] = {
+                                    'avg_similarity': float(value.get('avg_similarity', 0)),
+                                    'num_samples': value.get('num_samples', 0),
+                                    'feature_dim': value.get('feature_dim', 0)
+                                }
+                        
+                        with open(diagnosis_file, 'w', encoding='utf-8') as f:
+                            json.dump({
+                                'epoch': epoch,
+                                'train_loss': avg_train_loss,
+                                'val_loss': avg_val_loss if val_loss is not None else None,
+                                'learning_rate': optimizer.param_groups[0]['lr'],
+                                'diagnosis': diagnosis_save
+                            }, f, indent=2, ensure_ascii=False)
+                        print(f"  ✓ 诊断结果已保存到: {diagnosis_file}")
+                
+                print(f"{'=' * 60}\n")
+            
             # 打印epoch总结
             print(f"\nEpoch {epoch}/{n_epoch} 完成:")
             print(f"  训练损失: {avg_train_loss:.4f}")
             if val_loss is not None:
                 print(f"  验证损失: {avg_val_loss:.4f}")
             print(f"  学习率: {optimizer.param_groups[0]['lr']:.6f}")
+            if val_loader and early_stop_patience > 0:
+                print(f"  连续未改善epoch数: {epochs_without_improvement}/{early_stop_patience}")
             print("-" * 60)
+            
+            # 早停检查
+            if val_loader and early_stop_patience > 0 and epochs_without_improvement >= early_stop_patience:
+                print(f"\n{'=' * 60}")
+                print(f"⚠️  早停触发！")
+                print(f"验证损失连续 {epochs_without_improvement} 个epoch未改善")
+                print(f"最佳验证损失: {best_val_loss:.4f} (Epoch {epoch - epochs_without_improvement})")
+                print(f"{'=' * 60}")
+                break
         
         training_time = time.time() - start_time
         print(f"\n训练完成！总耗时: {training_time/60:.2f} 分钟")
+        if val_loader and early_stop_patience > 0 and epochs_without_improvement >= early_stop_patience:
+            print(f"训练因早停机制提前结束（Epoch {epoch}/{n_epoch}）")
         
         return {
             'train_history': self.train_history,

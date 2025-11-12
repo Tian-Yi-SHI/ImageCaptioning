@@ -33,7 +33,7 @@ class Pipeline:
             raise RuntimeError("Cannot mark model as ready - model has not been initialized")
         self.is_model_ready = True
 
-    def set_training_params(self, batch_size: int, n_epoch: int, lr: float, wd: float = 0.0):
+    def set_training_params(self, batch_size: int, n_epoch: int, lr: float, wd: float = 0.0, early_stop_patience: int = 0):
         """
         set and check training params
         Args:
@@ -41,6 +41,7 @@ class Pipeline:
             n_epoch: number of training epoch
             lr: learning rate
             wd: weight decay
+            early_stop_patience: early stopping patience (0 to disable)
         """
         # validation
         param_checks = [
@@ -51,7 +52,9 @@ class Pipeline:
             (isinstance(lr, (int, float)) and lr > 0, 
              f"Invalid learning rate {lr}: must be a positive number"),
             (isinstance(wd, (int, float)) and wd >= 0, 
-             f"Invalid weight decay {wd}: cannot be negative")
+             f"Invalid weight decay {wd}: cannot be negative"),
+            (isinstance(early_stop_patience, int) and early_stop_patience >= 0, 
+             f"Invalid early_stop_patience {early_stop_patience}: must be a non-negative integer")
         ]
         for is_valid, err_msg in param_checks:
             if not is_valid:
@@ -62,7 +65,8 @@ class Pipeline:
             "batch_size": batch_size,
             "n_epoch": n_epoch,
             "lr": lr,
-            "wd": wd
+            "wd": wd,
+            "early_stop_patience": early_stop_patience
         }
         self.is_params_ready = True
 

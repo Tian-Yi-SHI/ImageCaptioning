@@ -41,15 +41,17 @@ def _calculate_bleu_pycoco(references: Dict[str, List[List[str]]],
     # 确保references格式正确（列表的列表）
     refs = {}
     for img_id, ref_list in references.items():
-        if not ref_list:
+        if not ref_list or len(ref_list) == 0:
             continue  # 跳过空的reference
         # 确保ref_list是列表的列表
-        if isinstance(ref_list[0], str):
+        if len(ref_list) > 0 and isinstance(ref_list[0], str):
             # 如果第一个元素是字符串，说明ref_list是字符串列表，需要转换为列表的列表
             refs[img_id] = [ref.split() if isinstance(ref, str) else ref for ref in ref_list]
-        else:
+        elif len(ref_list) > 0:
             # 已经是列表的列表
             refs[img_id] = ref_list
+        else:
+            continue  # 跳过无效的reference
     
     # 确保hypotheses格式正确（单个词汇列表，不是列表的列表）
     hyps = {}

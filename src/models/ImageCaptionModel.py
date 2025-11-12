@@ -1,6 +1,6 @@
 """
-图像描述生成模型：CNN-LSTM架构
-编码器：ResNet18（预训练）
+图像描述生成模型：CNN-LSTM架构（按照《Show and Tell》论文）
+编码器：Inception-v3（预训练）
 解码器：LSTM
 """
 import torch
@@ -11,10 +11,10 @@ from typing import Optional, Tuple
 
 class ImageCaptionModel(nn.Module):
     """
-    图像描述生成模型
+    图像描述生成模型（按照《Show and Tell》论文）
     
     架构：
-    - CNN编码器（ResNet18）：提取图像特征
+    - CNN编码器（Inception-v3）：提取图像特征
     - LSTM解码器：生成文本序列
     """
     
@@ -47,18 +47,22 @@ class ImageCaptionModel(nn.Module):
         self.dropout = dropout
         self.freeze_encoder = freeze_encoder  # 论文建议冻结CNN
         
-        # CNN编码器：使用预训练的ResNet18
-        # 使用weights参数替代已弃用的pretrained参数
-        resnet = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
-        # 移除最后的全连接层和平均池化层
-        modules = list(resnet.children())[:-2]
+        # CNN编码器：使用预训练的Inception-v3（论文配置）
+        # 论文使用Inception-v3 (GoogLeNet)
+        inception = models.inception_v3(weights=models.Inception_V3_Weights.IMAGENET1K_V1, transform_input=False)
+        # Inception-v3的结构：移除最后的全连接层和辅助分类器
+        # 保留到Mixed_7c层（最后的卷积层）
+        modules = []
+        for name, module in inception.named_children():
+            if name != 'AuxLogits' and name != 'fc':
+                modules.append(module)
         self.encoder = nn.Sequential(*modules)
         
-        # 获取ResNet18的特征图维度
-        # ResNet18最后卷积层的输出是 (batch, 512, H, W)
-        # 这里我们使用全局平均池化得到 (batch, 512) 的特征向量
+        # 获取Inception-v3的特征图维度
+        # Inception-v3最后卷积层的输出是 (batch, 2048, H, W)
+        # 使用全局平均池化得到 (batch, 2048) 的特征向量
         self.encoder_pool = nn.AdaptiveAvgPool2d((1, 1))
-        encoder_output_dim = 512
+        encoder_output_dim = 2048
         
         # 将图像特征投影到LSTM输入维度
         self.image_projection = nn.Linear(encoder_output_dim, hidden_dim)
@@ -95,14 +99,32 @@ class ImageCaptionModel(nn.Module):
     
     def _initialize_weights(self):
         """初始化模型参数"""
-        # 嵌入层和输出层使用xavier初始化
-        nn.init.xavier_uniform_(self.embedding.weight)
-        nn.init.xavier_uniform_(self.fc.weight)
+        # 嵌入层使用较小的均匀分布初始化（避免初始值过大）
+        nn.init.uniform_(self.embedding.weight, -0.1, 0.1)
+        
+        # 输出层使用xavier初始化，但bias初始化为0
+        nn.init.xavier_uniform_(self.fc.weight, gain=0.1)  # 使用较小的gain
         nn.init.constant_(self.fc.bias, 0.0)
         
-        # 图像投影层初始化
+        # 图像投影层使用xavier初始化
         nn.init.xavier_uniform_(self.image_projection.weight)
         nn.init.constant_(self.image_projection.bias, 0.0)
+        
+        # LSTM权重使用正交初始化（对RNN更稳定）
+        for name, param in self.lstm.named_parameters():
+            if 'weight_ih' in name:
+                # 输入到隐藏的权重
+                nn.init.xavier_uniform_(param.data)
+            elif 'weight_hh' in name:
+                # 隐藏到隐藏的权重（使用正交初始化）
+                nn.init.orthogonal_(param.data)
+            elif 'bias' in name:
+                # bias初始化为0，但forget gate的bias设为1（帮助梯度流）
+                nn.init.constant_(param.data, 0.0)
+                # 设置forget gate的bias为1（LSTM的常见技巧）
+                n = param.size(0)
+                start, end = n // 4, n // 2
+                param.data[start:end].fill_(1.0)
     
     def encode_image(self, images: torch.Tensor) -> torch.Tensor:
         """
@@ -115,17 +137,17 @@ class ImageCaptionModel(nn.Module):
         Returns:
             image_features: (batch_size, hidden_dim) 图像特征向量
         """
-        # 通过ResNet编码器
+        # 通过Inception-v3编码器
         # 论文：冻结CNN权重会带来更好的效果
         if self.freeze_encoder:
             with torch.no_grad():
-                features = self.encoder(images)  # (batch_size, 512, H', W')
+                features = self.encoder(images)  # (batch_size, 2048, H', W')
         else:
-            features = self.encoder(images)  # (batch_size, 512, H', W')
+            features = self.encoder(images)  # (batch_size, 2048, H', W')
         
         # 全局平均池化
-        features = self.encoder_pool(features)  # (batch_size, 512, 1, 1)
-        features = features.view(features.size(0), -1)  # (batch_size, 512)
+        features = self.encoder_pool(features)  # (batch_size, 2048, 1, 1)
+        features = features.view(features.size(0), -1)  # (batch_size, 2048)
         
         # 投影到LSTM维度
         # 如果冻结了CNN，image_projection也会被冻结，但前向传播仍需要计算梯度（用于LSTM）
@@ -228,6 +250,9 @@ class ImageCaptionModel(nn.Module):
         generated_captions = []
         current_word = torch.full((batch_size,), start_idx, dtype=torch.long, device=device)
         
+        # 创建mask来跟踪哪些序列还在生成（在循环外初始化）
+        continue_mask = torch.ones(batch_size, dtype=torch.bool, device=device)
+        
         for step in range(max_length):
             # 词嵌入
             word_embedding = self.embedding(current_word).unsqueeze(1)  # (batch_size, 1, embed_dim)
@@ -244,14 +269,11 @@ class ImageCaptionModel(nn.Module):
             
             # 采样下一个词（使用greedy decoding）
             current_word = torch.argmax(output, dim=1)  # (batch_size,)
-            generated_captions.append(current_word.clone())  # 使用clone避免引用问题
             
-            # 检查是否所有序列都结束了（遇到END token）
-            # 注意：这里检查的是所有batch都结束，但实际上应该分别处理每个序列
-            # 改进：使用mask来跟踪每个序列是否结束
-            if step == 0:
-                # 创建mask来跟踪哪些序列还在生成
-                continue_mask = torch.ones(batch_size, dtype=torch.bool, device=device)
+            # 只保存还在生成的序列的词（已结束的序列保持END token）
+            current_word = torch.where(continue_mask, current_word, 
+                                       torch.full_like(current_word, end_idx))
+            generated_captions.append(current_word.clone())  # 使用clone避免引用问题
             
             # 更新mask：如果遇到END token，标记为已完成
             continue_mask = continue_mask & (current_word != end_idx)

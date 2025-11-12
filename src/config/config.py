@@ -5,14 +5,22 @@ from pathlib import Path
 
 
 def define_dev() -> torch.device:
-  if torch.cuda.is_available():
-    dev = torch.device("cuda")
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    print("Running on the GPU")
-  else:
-    dev = torch.device("cpu")
-    print("Running on the CPU")
-  return dev
+    """
+    自动选择最优计算设备，优先级：
+    1. NVIDIA CUDA GPU
+    2. Apple Silicon MPS（Metal Performance Shaders）
+    3. CPU
+    """
+    if torch.cuda.is_available():
+        dev = torch.device("cuda")
+        print("运行设备: NVIDIA GPU (cuda)")
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        dev = torch.device("mps")
+        print("运行设备: Apple Silicon GPU (mps)")
+    else:
+        dev = torch.device("cpu")
+        print("运行设备: CPU")
+    return dev
 
 def read_config(config_path=None) -> tuple:
     '''
@@ -84,7 +92,8 @@ def read_config(config_path=None) -> tuple:
         "lr": config.get("lr"),
         "wd": config.get("wd"),
         "batch_size": config.get("batch_size"),
-        "epoches": config.get("epoches")
+        "epoches": config.get("epoches"),
+        "early_stop_patience": config.get("early_stop_patience", 0)  # 早停patience，默认0（禁用）
     }
     
     flag_args = {

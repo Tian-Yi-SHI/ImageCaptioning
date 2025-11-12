@@ -1,0 +1,62 @@
+{
+  "checkpoint_epoch": 115,
+  "test_loss": 3.2807568876366866,
+  "bleu_scores": {
+    "BLEU-1": 0.6545759341838696,
+    "BLEU-2": 0.36939528737287763,
+    "BLEU-3": 0.1702682134005298,
+    "BLEU-4": 0.0756479085766278
+  },
+  "example_samples": [
+    {
+      "image_name": "3175446111_681a89f873.jpg",
+      "true_caption": "a lot of people playing games at an arcade",
+      "generated_caption": "a black and white dog is standing in front of a large band of a house in front of a crowd"
+    },
+    {
+      "image_name": "3082934678_58534e9d2c.jpg",
+      "true_caption": "A tan dog is running on pavement with a white dog running on grass beside it .",
+      "generated_caption": "a brown dog is running in the grass"
+    },
+    {
+      "image_name": "3492734013_e6b177ed99.jpg",
+      "true_caption": "A boy surrounded by pigeons is interacting with a person who is part of a larger crowd .",
+      "generated_caption": "a group of people are standing in front of a large building"
+    },
+    {
+      "image_name": "3532761259_14026c1e96.jpg",
+      "true_caption": "A girl and a woman pose for a picture .",
+      "generated_caption": "a man and a woman are sitting on a bench with a woman in a blue shirt"
+    },
+    {
+      "image_name": "2559114800_17310f3015.jpg",
+      "true_caption": "Greyhounds take a corner at a race .",
+      "generated_caption": "a dog is running through the grass"
+    },
+    {
+      "image_name": "2172526745_649f420569.jpg",
+      "true_caption": "A boy wearing a red shirt dumps water out of a yellow bucket onto a girl 's head .",
+      "generated_caption": "a man in a yellow shirt is standing on a rock in front of a waterfall"
+    },
+    {
+      "image_name": "3423249426_02bedf9260.jpg",
+      "true_caption": "A group of people standing on a rock path .",
+      "generated_caption": "a girl in a pink shirt and jeans is walking on a tree"
+    },
+    {
+      "image_name": "3265964840_5374ed9c53.jpg",
+      "true_caption": "A boy on a snowboard leaps through the air .",
+      "generated_caption": "a man in a red jacket is snowboarding on a snowboard"
+    },
+    {
+      "image_name": "3361882891_6e610ffdbb.jpg",
+      "true_caption": "A bicycle rider takes a daring jump as his friends watch .",
+      "generated_caption": "a man in a blue shirt and jeans is riding a bike through a forest"
+    },
+    {
+      "image_name": "1075881101_d55c46bece.jpg",
+      "true_caption": "a boy cleans the bubbles off his face .",
+      "generated_caption": "a black and white dog are standing on a beach"
+    }
+  ]
+}

@@ -1,0 +1,179 @@
+{
+  "epoch": 180,
+  "train_loss": 4.362794008632164,
+  "val_loss": 4.313661813735962,
+  "learning_rate": 0.01,
+  "diagnosis": {
+    "output_distribution": {
+      "repetition_rate": 0.78,
+      "unique_sequences": 11,
+      "total_samples": 50,
+      "position_diversity": {
+        "0": {
+          "unique_words": 1,
+          "most_common_word": "a",
+          "most_common_freq": 1.0,
+          "total_samples": 50
+        },
+        "1": {
+          "unique_words": 1,
+          "most_common_word": "man",
+          "most_common_freq": 1.0,
+          "total_samples": 50
+        },
+        "2": {
+          "unique_words": 1,
+          "most_common_word": "in",
+          "most_common_freq": 1.0,
+          "total_samples": 50
+        },
+        "3": {
+          "unique_words": 1,
+          "most_common_word": "a",
+          "most_common_freq": 1.0,
+          "total_samples": 50
+        },
+        "4": {
+          "unique_words": 4,
+          "most_common_word": "red",
+          "most_common_freq": 0.6,
+          "total_samples": 50
+        },
+        "5": {
+          "unique_words": 3,
+          "most_common_word": "and",
+          "most_common_freq": 0.54,
+          "total_samples": 50
+        },
+        "6": {
+          "unique_words": 3,
+          "most_common_word": "a",
+          "most_common_freq": 0.88,
+          "total_samples": 50
+        },
+        "7": {
+          "unique_words": 5,
+          "most_common_word": "shirt",
+          "most_common_freq": 0.54,
+          "total_samples": 50
+        },
+        "8": {
+          "unique_words": 4,
+          "most_common_word": "and",
+          "most_common_freq": 0.54,
+          "total_samples": 50
+        },
+        "9": {
+          "unique_words": 2,
+          "most_common_word": "a",
+          "most_common_freq": 0.64,
+          "total_samples": 50
+        },
+        "10": {
+          "unique_words": 4,
+          "most_common_word": "dog",
+          "most_common_freq": 0.4,
+          "total_samples": 50
+        },
+        "11": {
+          "unique_words": 3,
+          "most_common_word": "<END>",
+          "most_common_freq": 0.8,
+          "total_samples": 50
+        },
+        "12": {
+          "unique_words": 2,
+          "most_common_word": "<END>",
+          "most_common_freq": 0.8,
+          "total_samples": 50
+        },
+        "13": {
+          "unique_words": 4,
+          "most_common_word": "<END>",
+          "most_common_freq": 0.8,
+          "total_samples": 50
+        },
+        "14": {
+          "unique_words": 2,
+          "most_common_word": "<END>",
+          "most_common_freq": 0.94,
+          "total_samples": 50
+        },
+        "15": {
+          "unique_words": 2,
+          "most_common_word": "<END>",
+          "most_common_freq": 0.94,
+          "total_samples": 50
+        },
+        "16": {
+          "unique_words": 2,
+          "most_common_word": "<END>",
+          "most_common_freq": 0.94,
+          "total_samples": 50
+        },
+        "17": {
+          "unique_words": 1,
+          "most_common_word": "<END>",
+          "most_common_freq": 1.0,
+          "total_samples": 50
+        }
+      }
+    },
+    "gradient_flow": {
+      "embedding.weight": {
+        "norm": 0.0968945249915123,
+        "mean": -4.271704323599579e-09,
+        "std": 7.841706246836111e-05,
+        "max": 0.005232827737927437,
+        "min": -0.005412136670202017
+      },
+      "lstm.weight_ih_l0": {
+        "norm": 0.08516440540552139,
+        "mean": 8.178199095709715e-08,
+        "std": 8.316836465382949e-05,
+        "max": 0.003940641414374113,
+        "min": -0.0033245848026126623
+      },
+      "lstm.weight_hh_l0": {
+        "norm": 0.8516044616699219,
+        "mean": -3.985030161857139e-06,
+        "std": 0.0008316358434967697,
+        "max": 0.023790672421455383,
+        "min": -0.021042397245764732
+      },
+      "lstm.bias_ih_l0": {
+        "norm": 0.06410611420869827,
+        "mean": -8.708871609997004e-05,
+        "std": 0.0014142240397632122,
+        "max": 0.017723020166158676,
+        "min": -0.023685863241553307
+      },
+      "lstm.bias_hh_l0": {
+        "norm": 0.06410611420869827,
+        "mean": -8.708871609997004e-05,
+        "std": 0.0014142240397632122,
+        "max": 0.017723020166158676,
+        "min": -0.023685863241553307
+      },
+      "fc.weight": {
+        "norm": 0.8881580829620361,
+        "mean": 1.0150229181465908e-12,
+        "std": 0.0007187892915681005,
+        "max": 0.0356018990278244,
+        "min": -0.03645136207342148
+      },
+      "fc.bias": {
+        "norm": 0.039818886667490005,
+        "mean": 2.7796012019853933e-11,
+        "std": 0.0007293032831512392,
+        "max": 0.006773214787244797,
+        "min": -0.011231777258217335
+      }
+    },
+    "image_features": {
+      "avg_similarity": 0.48554715514183044,
+      "num_samples": 32,
+      "feature_dim": 512
+    }
+  }
+}

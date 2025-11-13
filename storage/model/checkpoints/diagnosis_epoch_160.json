@@ -1,0 +1,149 @@
+{
+  "epoch": 160,
+  "train_loss": 4.4219717036532815,
+  "val_loss": 4.375789002368324,
+  "learning_rate": 0.01,
+  "diagnosis": {
+    "output_distribution": {
+      "repetition_rate": 0.9,
+      "unique_sequences": 5,
+      "total_samples": 50,
+      "position_diversity": {
+        "0": {
+          "unique_words": 1,
+          "most_common_word": "a",
+          "most_common_freq": 1.0,
+          "total_samples": 50
+        },
+        "1": {
+          "unique_words": 1,
+          "most_common_word": "man",
+          "most_common_freq": 1.0,
+          "total_samples": 50
+        },
+        "2": {
+          "unique_words": 1,
+          "most_common_word": "in",
+          "most_common_freq": 1.0,
+          "total_samples": 50
+        },
+        "3": {
+          "unique_words": 1,
+          "most_common_word": "a",
+          "most_common_freq": 1.0,
+          "total_samples": 50
+        },
+        "4": {
+          "unique_words": 3,
+          "most_common_word": "dog",
+          "most_common_freq": 0.86,
+          "total_samples": 50
+        },
+        "5": {
+          "unique_words": 2,
+          "most_common_word": "in",
+          "most_common_freq": 0.98,
+          "total_samples": 50
+        },
+        "6": {
+          "unique_words": 2,
+          "most_common_word": "a",
+          "most_common_freq": 0.98,
+          "total_samples": 50
+        },
+        "7": {
+          "unique_words": 2,
+          "most_common_word": "<UNK>",
+          "most_common_freq": 0.98,
+          "total_samples": 50
+        },
+        "8": {
+          "unique_words": 2,
+          "most_common_word": "<END>",
+          "most_common_freq": 0.98,
+          "total_samples": 50
+        },
+        "9": {
+          "unique_words": 2,
+          "most_common_word": "<END>",
+          "most_common_freq": 0.96875,
+          "total_samples": 32
+        },
+        "10": {
+          "unique_words": 2,
+          "most_common_word": "<END>",
+          "most_common_freq": 0.96875,
+          "total_samples": 32
+        },
+        "11": {
+          "unique_words": 2,
+          "most_common_word": "<END>",
+          "most_common_freq": 0.96875,
+          "total_samples": 32
+        },
+        "12": {
+          "unique_words": 1,
+          "most_common_word": "<END>",
+          "most_common_freq": 1.0,
+          "total_samples": 32
+        }
+      }
+    },
+    "gradient_flow": {
+      "embedding.weight": {
+        "norm": 0.09962853789329529,
+        "mean": -1.5392031116334692e-07,
+        "std": 8.062956476351246e-05,
+        "max": 0.005518450867384672,
+        "min": -0.005466090515255928
+      },
+      "lstm.weight_ih_l0": {
+        "norm": 0.08791029453277588,
+        "mean": 2.3372445312475065e-08,
+        "std": 8.584994066040963e-05,
+        "max": 0.0033819321542978287,
+        "min": -0.003410253906622529
+      },
+      "lstm.weight_hh_l0": {
+        "norm": 0.9242216944694519,
+        "mean": -8.513451348335366e-07,
+        "std": 0.000902560306712985,
+        "max": 0.026781992986798286,
+        "min": -0.025772029533982277
+      },
+      "lstm.bias_ih_l0": {
+        "norm": 0.06947894394397736,
+        "mean": -4.837434971705079e-05,
+        "std": 0.0015348948072642088,
+        "max": 0.016293028369545937,
+        "min": -0.03110845573246479
+      },
+      "lstm.bias_hh_l0": {
+        "norm": 0.06947894394397736,
+        "mean": -4.837434971705079e-05,
+        "std": 0.0015348948072642088,
+        "max": 0.016293028369545937,
+        "min": -0.03110845573246479
+      },
+      "fc.weight": {
+        "norm": 0.9824752807617188,
+        "mean": 9.955032674938136e-13,
+        "std": 0.0007951204897835851,
+        "max": 0.04227980971336365,
+        "min": -0.041162800043821335
+      },
+      "fc.bias": {
+        "norm": 0.05094901844859123,
+        "mean": 2.498518059113053e-11,
+        "std": 0.0009331572218798101,
+        "max": 0.01088818721473217,
+        "min": -0.0250655896961689
+      }
+    },
+    "image_features": {
+      "avg_similarity": 0.48663395643234253,
+      "num_samples": 32,
+      "feature_dim": 512
+    }
+  }
+}

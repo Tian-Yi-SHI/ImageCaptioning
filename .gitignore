@@ -23,6 +23,18 @@ ENV/
 .DS_Store
 Thumbs.db
 
+# 模型checkpoint文件（大文件不应提交）
+*.pth
+storage/model/checkpoints/
+storage/model/best_model.pth
+storage/model_backup_*/
+
+# 数据集图片文件（大文件不应提交）
+storage/dataset/archive/Images/
+storage/dataset/archive/*.zip
+storage/dataset/archive/*.tar
+storage/dataset/archive/*.gz
+
 
 
 

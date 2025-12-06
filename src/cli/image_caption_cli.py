@@ -4,7 +4,6 @@
 """
 import os
 from pathlib import Path
-from functools import partial
 
 from torchvision import transforms
 from torch.utils.data import DataLoader, Subset
@@ -44,7 +43,7 @@ def build_vocabulary_from_dataset(dataset):
     # 构建词汇表（按照《Show and Tell》论文方法）
     # 论文：仅保留出现至少5次的单词，并根据训练集实际情况自动调整词汇表大小
     # 设置一个较大的初始值，build_vocabulary会自动调整到实际需要的值
-    vocabulary = Vocabulary(max_vocab_size=10000)  # 论文配置
+    vocabulary = Vocabulary(max_vocab_size=10000)  # 初始值，会自动调整
     vocabulary.build_vocabulary(
         captions_list, 
         min_word_freq=5,  # 论文：至少5次
@@ -54,18 +53,28 @@ def build_vocabulary_from_dataset(dataset):
     return vocabulary
 
 
-def create_collate_fn(vocabulary, max_caption_length=30):
+# 全局变量用于存储vocabulary（用于多进程）
+_collate_fn_vocab = None
+_collate_fn_max_length = 30
+
+def _collate_fn_wrapper(batch):
+    """模块级别的collate_fn包装器（用于多进程）"""
+    global _collate_fn_vocab, _collate_fn_max_length
+    if _collate_fn_vocab is None:
+        raise RuntimeError("Vocabulary not set for collate_fn. Call set_collate_fn_vocab first.")
+    return collate_fn(batch, _collate_fn_vocab, _collate_fn_max_length)
+
+def set_collate_fn_vocab(vocabulary, max_caption_length=30):
     """
-    创建一个绑定了vocabulary的collate_fn（用于多进程）
+    设置collate_fn使用的vocabulary（用于多进程）
     
     Args:
         vocabulary: 词汇表对象
         max_caption_length: 最大caption长度
-        
-    Returns:
-        绑定了vocabulary的collate_fn函数
     """
-    return partial(collate_fn, vocabulary=vocabulary, max_caption_length=max_caption_length)
+    global _collate_fn_vocab, _collate_fn_max_length
+    _collate_fn_vocab = vocabulary
+    _collate_fn_max_length = max_caption_length
 
 
 def run_quick_sample_check(pipeline, test_subset, num_workers, sample_count, checkpoint_path, model_path, vocab_size):
@@ -92,18 +101,12 @@ def run_quick_sample_check(pipeline, test_subset, num_workers, sample_count, che
     else:
         quick_subset = Subset(test_subset, list(range(actual_count)))
     
-    # 创建collate_fn（需要从pipeline获取vocabulary）
-    if pipeline.vocabulary is None:
-        print(">>> 快速检测: vocabulary未设置，跳过")
-        return
-    
-    quick_collate_fn = create_collate_fn(pipeline.vocabulary, max_caption_length=25)
     quick_loader = DataLoader(
         quick_subset,
         batch_size=1,
         shuffle=False,
         num_workers=num_workers,
-        collate_fn=quick_collate_fn
+        collate_fn=_collate_fn_wrapper
     )
     
     # 加载模型权重
@@ -178,19 +181,17 @@ def main():
     # ========== 4. 数据预处理和分割 ==========
     print("\n[4/7] 数据预处理和分割...")
     
-    # 定义图像变换（按照《Show and Tell》论文配置）
-    # 论文：使用RandomCrop和RandomHorizontalFlip进行数据增强
-    # Inception-v3标准输入尺寸：299x299，但也可以使用224x224
+    # 定义图像变换
     train_transform = transforms.Compose([
-        transforms.Resize((256, 256)),  # 先resize到稍大尺寸
-        transforms.RandomCrop(224),  # 随机裁剪到224x224（论文配置）
-        transforms.RandomHorizontalFlip(p=0.5),  # 随机水平翻转
+        transforms.Resize((256, 256)),
+        transforms.RandomCrop(224),
+        transforms.RandomHorizontalFlip(p=0.5),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
     
     val_test_transform = transforms.Compose([
-        transforms.Resize((224, 224)),  # 验证和测试集：直接resize到224x224
+        transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
@@ -231,32 +232,21 @@ def main():
     print("\n[5/7] 创建DataLoader...")
     
     batch_size = hyper_args['batch_size']
-    # M4芯片优化：使用多进程数据加载加快速度（Mac上通常可以工作）
-    # 如果遇到pickle错误，可以设置为0（单进程）
-    # 注意：MPS上多进程可能效果不明显，因为MPS本身是异步的
-    num_workers = 2  # M4芯片：减少到2个worker（MPS上多进程收益有限）
+    # Mac上使用多进程时可能会有问题，建议使用0或1
+    # 如果遇到pickle错误，设置为0（单进程）
+    num_workers = 0  # Mac上建议使用0（单进程）避免pickle问题
     
-    # 创建collate_fn（使用functools.partial绑定vocabulary，支持多进程）
+    # 设置collate_fn的vocabulary（用于多进程）
     # 减少max_caption_length可以加快训练（但可能影响长句子）
-    max_caption_length = 25  # 从30减少到25
-    train_collate_fn = create_collate_fn(vocabulary, max_caption_length=max_caption_length)
-    val_test_collate_fn = create_collate_fn(vocabulary, max_caption_length=max_caption_length)
+    set_collate_fn_vocab(vocabulary, max_caption_length=25)  # 从30减少到25
     
-    # 创建DataLoader（使用绑定了vocabulary的collate_fn）
-    # MPS优化：MPS不支持pin_memory，自动禁用
-    use_pin_memory = device.type != 'mps'  # MPS不支持pin_memory
-    
-    # MPS优化：persistent_workers在MPS上可能效果不明显
-    use_persistent_workers = False if device.type == 'mps' else (num_workers > 0)
-    
+    # 创建DataLoader（使用模块级别的collate_fn）
     train_loader = DataLoader(
         train_subset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
-        collate_fn=train_collate_fn,
-        pin_memory=use_pin_memory,  # MPS不支持，自动禁用
-        persistent_workers=use_persistent_workers  # MPS上禁用
+        collate_fn=_collate_fn_wrapper
     )
     
     val_loader = DataLoader(
@@ -264,9 +254,7 @@ def main():
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        collate_fn=val_test_collate_fn,
-        pin_memory=use_pin_memory,
-        persistent_workers=use_persistent_workers
+        collate_fn=_collate_fn_wrapper
     )
     
     test_loader = DataLoader(
@@ -274,16 +262,12 @@ def main():
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        collate_fn=val_test_collate_fn,
-        pin_memory=use_pin_memory,
-        persistent_workers=use_persistent_workers
+        collate_fn=_collate_fn_wrapper
     )
     
     print(f"  训练集批次数: {len(train_loader)}")
     print(f"  验证集批次数: {len(val_loader)}")
     print(f"  测试集批次数: {len(test_loader)}")
-    if device.type == 'mps':
-        print(f"  MPS优化: num_workers={num_workers}, pin_memory=False, persistent_workers=False")
     
     # ========== 6. 初始化Pipeline和模型 ==========
     print("\n[6/7] 初始化Pipeline和模型...")
@@ -316,8 +300,7 @@ def main():
         batch_size=hyper_args['batch_size'],
         n_epoch=hyper_args['epoches'],
         lr=hyper_args['lr'],
-        wd=hyper_args['wd'],
-        early_stop_patience=hyper_args.get('early_stop_patience', 0)  # 早停patience，默认0（禁用）
+        wd=hyper_args['wd']
     )
     
     # ========== 7. 训练和测试 ==========
@@ -393,34 +376,16 @@ def main():
     print("开始测试...")
     print("=" * 60)
     
-    # 自动找到最佳验证损失的checkpoint进行测试
+    # 检查是否要测试特定的checkpoint（第25个epoch）
     test_checkpoint_epoch = None
-    best_checkpoint_path = None
+    checkpoint_25_path = None
     if os.path.exists(checkpoint_dir):
-        checkpoint_files = [f for f in os.listdir(checkpoint_dir) if f.startswith('checkpoint_epoch_') and f.endswith('.pth')]
-        if checkpoint_files:
-            # 找到最佳验证损失的checkpoint
-            import torch
-            best_val_loss = float('inf')
-            best_epoch = None
-            
-            for checkpoint_file in checkpoint_files:
-                checkpoint_path = os.path.join(checkpoint_dir, checkpoint_file)
-                try:
-                    checkpoint = torch.load(checkpoint_path, map_location='cpu')
-                    if 'best_val_loss' in checkpoint and checkpoint['best_val_loss'] < best_val_loss:
-                        best_val_loss = checkpoint['best_val_loss']
-                        best_epoch = checkpoint.get('epoch', None)
-                        best_checkpoint_path = checkpoint_path
-                except Exception as e:
-                    print(f"  警告: 无法读取checkpoint {checkpoint_file}: {e}")
-                    continue
-            
-            if best_checkpoint_path and best_epoch is not None:
-                print(f"\n发现最佳checkpoint (Epoch {best_epoch}, 验证损失: {best_val_loss:.4f})，将测试该checkpoint")
-                test_checkpoint_epoch = best_epoch
-                # 加载checkpoint模型（会覆盖之前加载的模型）
-                pipeline.load_checkpoint_model(best_checkpoint_path)
+        checkpoint_25_path = os.path.join(checkpoint_dir, 'checkpoint_epoch_25.pth')
+        if os.path.exists(checkpoint_25_path):
+            print(f"\n发现第25个epoch的checkpoint，将测试该checkpoint")
+            test_checkpoint_epoch = 25
+            # 加载checkpoint模型（会覆盖之前加载的模型）
+            pipeline.load_checkpoint_model(checkpoint_25_path)
     
     # 执行测试
     test_results = pipeline.test(test_loader)

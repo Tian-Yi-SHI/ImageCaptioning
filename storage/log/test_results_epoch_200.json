@@ -1,62 +1,62 @@
 {
   "checkpoint_epoch": 200,
-  "test_loss": 4.300705570923655,
+  "test_loss": 3.3418142795562744,
   "bleu_scores": {
-    "BLEU-1": 0.7003720871123649,
-    "BLEU-2": 0.30173905818464625,
-    "BLEU-3": 0.06802857573874022,
-    "BLEU-4": 0.026725401435257496
+    "BLEU-1": 0.6931251342738532,
+    "BLEU-2": 0.39626707510552184,
+    "BLEU-3": 0.19791392543390154,
+    "BLEU-4": 0.0911014437991629
   },
   "example_samples": [
     {
       "image_name": "3175446111_681a89f873.jpg",
       "true_caption": "a lot of people playing games at an arcade",
-      "generated_caption": "a man in a red shirt is is on a <UNK>"
+      "generated_caption": "a group of people are standing in front of a building"
     },
     {
       "image_name": "3082934678_58534e9d2c.jpg",
       "true_caption": "A tan dog is running on pavement with a white dog running on grass beside it .",
-      "generated_caption": "a black dog is dog a dog"
+      "generated_caption": "a brown dog is running through the grass"
     },
     {
       "image_name": "3492734013_e6b177ed99.jpg",
       "true_caption": "A boy surrounded by pigeons is interacting with a person who is part of a larger crowd .",
-      "generated_caption": "a man in a red and and white dog is in a <UNK>"
+      "generated_caption": "a group of people are standing in front of a building"
     },
     {
       "image_name": "3532761259_14026c1e96.jpg",
       "true_caption": "A girl and a woman pose for a picture .",
-      "generated_caption": "a man in a red shirt is is on a <UNK>"
+      "generated_caption": "a group of people are sitting on a bench"
     },
     {
       "image_name": "2559114800_17310f3015.jpg",
       "true_caption": "Greyhounds take a corner at a race .",
-      "generated_caption": "a man in a red and and dog is is in a <UNK>"
+      "generated_caption": "a dog running through a field"
     },
     {
       "image_name": "2172526745_649f420569.jpg",
       "true_caption": "A boy wearing a red shirt dumps water out of a yellow bucket onto a girl 's head .",
-      "generated_caption": "a man in a red and and white dog is on a <UNK>"
+      "generated_caption": "a girl in a yellow shirt and yellow shirt is standing in a large rock"
     },
     {
       "image_name": "3423249426_02bedf9260.jpg",
       "true_caption": "A group of people standing on a rock path .",
-      "generated_caption": "a man in a red shirt is is on a <UNK>"
+      "generated_caption": "a girl in a red jacket and blue shirt is sitting on a tree with a tree"
     },
     {
       "image_name": "3265964840_5374ed9c53.jpg",
       "true_caption": "A boy on a snowboard leaps through the air .",
-      "generated_caption": "a man in a red and a shirt and a shirt and a dog"
+      "generated_caption": "a man in a blue jacket and blue helmet is riding a <UNK>"
     },
     {
       "image_name": "3361882891_6e610ffdbb.jpg",
       "true_caption": "A bicycle rider takes a daring jump as his friends watch .",
-      "generated_caption": "a man in a red shirt is is on a <UNK>"
+      "generated_caption": "a biker is riding a jump in the air"
     },
     {
       "image_name": "1075881101_d55c46bece.jpg",
       "true_caption": "a boy cleans the bubbles off his face .",
-      "generated_caption": "a man in a red and and white dog is in a <UNK>"
+      "generated_caption": "a baby plays with a small white dog"
     }
   ]
 }

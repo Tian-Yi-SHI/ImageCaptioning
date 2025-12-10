@@ -2,19 +2,40 @@
 图像描述生成Pipeline实现
 包含训练和测试的完整逻辑
 """
+import os
+import sys
 import time
 from typing import Optional, Any
+from pathlib import Path
+
+# 添加项目根目录到Python路径，以便正确导入模块
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+# 添加src目录到Python路径
+src_path = Path(__file__).parent.parent
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 
-from .Pipeline import Pipeline
-from models.ImageCaptionModel import ImageCaptionModel
-from utils.vocabulary import Vocabulary
-from utils.metrics import calculate_bleu_scores
-from config.config import define_dev
+# 尝试相对导入，如果失败则使用绝对导入
+try:
+    from .Pipeline import Pipeline
+    from ..models.ImageCaptionModel import ImageCaptionModel
+    from ..utils.vocabulary import Vocabulary
+    from ..utils.metrics import calculate_bleu_scores
+    from ..config.config import define_dev
+except ImportError:
+    # 如果相对导入失败，使用绝对导入
+    from src.pipeline.Pipeline import Pipeline
+    from src.models.ImageCaptionModel import ImageCaptionModel
+    from src.utils.vocabulary import Vocabulary
+    from src.utils.metrics import calculate_bleu_scores
+    from src.config.config import define_dev
 
 
 class PipelineIC(Pipeline):
@@ -35,6 +56,7 @@ class PipelineIC(Pipeline):
         self.vocabulary = vocabulary
         self.device = device if device is not None else define_dev()
         self.max_caption_length = 25  # 从30减少到25，加快训练
+        self.model_type = 'transformer'  # 当前模型类型，默认使用transformer
         
         # 训练历史记录
         self.train_history = {
@@ -45,21 +67,44 @@ class PipelineIC(Pipeline):
     
     def build_model(self, model: Optional[Any] = None, 
                     vocab_size: Optional[int] = None,
+                    model_type: str = 'transformer',  # 默认使用transformer
+                    # CNN-LSTM参数
                     embed_dim: int = 256,
                     hidden_dim: int = 512,
                     num_layers: int = 1,
                     dropout: float = 0.5,
-                    freeze_encoder: bool = False) -> Any:
+                    freeze_encoder: bool = False,
+                    # Transformer参数
+                    d_model: int = 512,
+                    nhead: int = 8,
+                    num_encoder_layers: int = 3,
+                    num_decoder_layers: int = 3,
+                    dim_feedforward: int = 2048,
+                    pos_dim: int = 256,
+                    feature_dim: int = 256,
+                    threshold_mode: str = 'adaptive') -> Any:
         """
         构建或加载模型
         
         Args:
             model: 预训练模型（可选）
             vocab_size: 词汇表大小（如果vocabulary已设置，会自动获取）
+            model_type: 模型类型，'cnn_lstm' 或 'transformer'
+            # CNN-LSTM参数
             embed_dim: 词嵌入维度
             hidden_dim: LSTM隐藏层维度
             num_layers: LSTM层数
             dropout: Dropout概率
+            freeze_encoder: 是否冻结编码器
+            # Transformer参数
+            d_model: Transformer维度
+            nhead: 注意力头数
+            num_encoder_layers: 编码器层数
+            num_decoder_layers: 解码器层数
+            dim_feedforward: FFN维度
+            pos_dim: 位置编码维度（x和y各pos_dim维）
+            feature_dim: 特征维度
+            threshold_mode: 位置编码阈值模式
             
         Returns:
             构建的模型
@@ -74,15 +119,36 @@ class PipelineIC(Pipeline):
                     raise ValueError("vocabulary未设置，无法确定vocab_size")
                 vocab_size = len(self.vocabulary)
             
-            self.model = ImageCaptionModel(
-                vocab_size=vocab_size,
-                embed_dim=embed_dim,
-                hidden_dim=hidden_dim,
-                num_layers=num_layers,
-                max_caption_length=self.max_caption_length,
-                dropout=dropout,
-                freeze_encoder=freeze_encoder
-            )
+            self.model_type = model_type  # 保存模型类型
+            
+            if model_type == 'transformer':
+                from models.TransformerImageCaptionModel import TransformerImageCaptionModel
+                self.model = TransformerImageCaptionModel(
+                    vocab_size=vocab_size,
+                    d_model=d_model,
+                    nhead=nhead,
+                    num_encoder_layers=num_encoder_layers,
+                    num_decoder_layers=num_decoder_layers,
+                    dim_feedforward=dim_feedforward,
+                    dropout=dropout,
+                    max_caption_length=self.max_caption_length,
+                    pos_dim=pos_dim,
+                    feature_dim=feature_dim,
+                    freeze_encoder=freeze_encoder,
+                    threshold_mode=threshold_mode
+                )
+                print(f"使用Transformer模型（位置编码：xy各{pos_dim}维，模长加权）")
+            else:  # 'cnn_lstm'
+                self.model = ImageCaptionModel(
+                    vocab_size=vocab_size,
+                    embed_dim=embed_dim,
+                    hidden_dim=hidden_dim,
+                    num_layers=num_layers,
+                    max_caption_length=self.max_caption_length,
+                    dropout=dropout,
+                    freeze_encoder=freeze_encoder
+                )
+                print(f"使用CNN-LSTM模型")
         
         # 将模型移到设备
         self.model = self.model.to(self.device)
@@ -492,7 +558,8 @@ class PipelineIC(Pipeline):
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'vocab_size': len(self.vocabulary) if self.vocabulary else None,
-            'max_caption_length': self.max_caption_length
+            'max_caption_length': self.max_caption_length,
+            'model_type': self.model_type  # 保存模型类型
         }, filepath)
         print(f"模型已保存到: {filepath}")
     
@@ -519,7 +586,8 @@ class PipelineIC(Pipeline):
             'vocab_size': len(self.vocabulary) if self.vocabulary else None,
             'max_caption_length': self.max_caption_length,
             'best_val_loss': best_val_loss,
-            'training_params': self.training_params
+            'training_params': self.training_params,
+            'model_type': self.model_type  # 保存模型类型
         }
         
         # 如果有scheduler，保存scheduler状态
@@ -528,20 +596,42 @@ class PipelineIC(Pipeline):
         
         torch.save(checkpoint, filepath)
     
-    def load_model(self, filepath: str, vocab_size: int):
-        """加载模型"""
+    def load_model(self, filepath: str, vocab_size: int, model_type: Optional[str] = None):
+        """
+        加载模型
+        
+        Args:
+            filepath: 模型文件路径
+            vocab_size: 词汇表大小
+            model_type: 模型类型（如果为None，从checkpoint中读取）
+        """
         checkpoint = torch.load(filepath, map_location=self.device)
         
         # 从checkpoint恢复max_caption_length（如果存在）
         if 'max_caption_length' in checkpoint:
             self.max_caption_length = checkpoint['max_caption_length']
         
-        # 构建模型（使用保存的参数）
-        self.model = ImageCaptionModel(vocab_size=vocab_size)
+        # 获取模型类型（优先使用参数，其次从checkpoint读取，最后默认transformer）
+        if model_type is None:
+            model_type = checkpoint.get('model_type', 'transformer')
+        self.model_type = model_type
+        
+        # 根据模型类型构建模型
+        if model_type == 'transformer':
+            from models.TransformerImageCaptionModel import TransformerImageCaptionModel
+            # 使用默认参数构建（如果需要，可以从checkpoint中读取更多参数）
+            self.model = TransformerImageCaptionModel(
+                vocab_size=vocab_size,
+                max_caption_length=self.max_caption_length
+            )
+        else:  # 'cnn_lstm'
+            self.model = ImageCaptionModel(vocab_size=vocab_size, max_caption_length=self.max_caption_length)
+        
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model = self.model.to(self.device)
         self._mark_model_ready()
         print(f"模型已从 {filepath} 加载")
+        print(f"模型类型: {model_type}")
         print(f"词汇表大小: {vocab_size}")
         print(f"Caption最大长度: {self.max_caption_length}")
     
@@ -570,24 +660,37 @@ class PipelineIC(Pipeline):
         if 'max_caption_length' in checkpoint:
             self.max_caption_length = checkpoint['max_caption_length']
         
-        # 从checkpoint获取模型参数（如果checkpoint中有）
-        # 否则需要手动指定参数
-        embed_dim = 512
-        hidden_dim = 512
-        num_layers = 1
-        dropout = 0.5
-        freeze_encoder = False
+        # 获取模型类型（从checkpoint读取，默认transformer）
+        model_type = checkpoint.get('model_type', 'transformer')
+        self.model_type = model_type
         
-        # 构建模型
-        self.model = ImageCaptionModel(
-            vocab_size=vocab_size,
-            embed_dim=embed_dim,
-            hidden_dim=hidden_dim,
-            num_layers=num_layers,
-            max_caption_length=self.max_caption_length,
-            dropout=dropout,
-            freeze_encoder=freeze_encoder
-        )
+        # 根据模型类型构建模型
+        if model_type == 'transformer':
+            from models.TransformerImageCaptionModel import TransformerImageCaptionModel
+            # 使用默认参数构建Transformer模型
+            self.model = TransformerImageCaptionModel(
+                vocab_size=vocab_size,
+                max_caption_length=self.max_caption_length
+            )
+        else:  # 'cnn_lstm'
+            # 从checkpoint获取模型参数（如果checkpoint中有）
+            # 否则使用默认参数
+            embed_dim = checkpoint.get('embed_dim', 512)
+            hidden_dim = checkpoint.get('hidden_dim', 512)
+            num_layers = checkpoint.get('num_layers', 1)
+            dropout = checkpoint.get('dropout', 0.5)
+            freeze_encoder = checkpoint.get('freeze_encoder', False)
+            
+            # 构建模型
+            self.model = ImageCaptionModel(
+                vocab_size=vocab_size,
+                embed_dim=embed_dim,
+                hidden_dim=hidden_dim,
+                num_layers=num_layers,
+                max_caption_length=self.max_caption_length,
+                dropout=dropout,
+                freeze_encoder=freeze_encoder
+            )
         
         # 加载模型状态
         if 'model_state_dict' in checkpoint:

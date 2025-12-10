@@ -51,7 +51,8 @@ def read_config(config_path="./src/config/config_file.yaml") -> tuple:
     }
     
     flag_args = {
-        "load_model_trained": config.get("load_model_trained")
+        "load_model_trained": config.get("load_model_trained"),
+        "model_type": config.get("model_type", "transformer")  # 默认使用transformer
     }
     
     return folder_args, hyper_args, flag_args

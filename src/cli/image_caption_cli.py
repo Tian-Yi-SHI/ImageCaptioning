@@ -2,8 +2,13 @@
 图像描述生成命令行工具
 用于训练和测试模型
 """
+import sys
 import os
 from pathlib import Path
+
+current_dir = os.path.dirname(os.path.abspath(__file__))  # cli目录
+src_dir = os.path.dirname(current_dir)  # src目录
+sys.path.insert(0, src_dir)
 
 from torchvision import transforms
 from torch.utils.data import DataLoader, Subset

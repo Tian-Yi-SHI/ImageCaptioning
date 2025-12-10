@@ -11,10 +11,10 @@ import torch.optim as optim
 from tqdm import tqdm
 
 from .Pipeline import Pipeline
-from ..models.ImageCaptionModel import ImageCaptionModel
-from ..utils.vocabulary import Vocabulary
-from ..utils.metrics import calculate_bleu_scores
-from ..config.config import define_dev
+from models.ImageCaptionModel import ImageCaptionModel
+from utils.vocabulary import Vocabulary
+from utils.metrics import calculate_bleu_scores
+from config.config import define_dev
 
 
 class PipelineIC(Pipeline):

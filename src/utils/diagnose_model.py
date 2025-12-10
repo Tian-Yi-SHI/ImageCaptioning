@@ -147,6 +147,16 @@ def check_image_features(model, test_loader, device, num_samples=10):
     
     all_features = torch.cat(image_features_list, dim=0)
     
+    # 处理不同维度的特征
+    # CNN-LSTM模型返回: (batch_size, feature_dim) - 2D
+    # Transformer模型返回: (batch_size, seq_len, d_model) - 3D
+    if all_features.dim() == 3:
+        # Transformer模型：对序列维度进行平均池化，得到全局特征
+        all_features = all_features.mean(dim=1)  # (batch_size, d_model)
+    elif all_features.dim() != 2:
+        # 未知维度，尝试flatten
+        all_features = all_features.view(all_features.size(0), -1)
+    
     # 计算特征统计
     feature_mean = all_features.mean(dim=0)
     feature_std = all_features.std(dim=0)
@@ -155,7 +165,7 @@ def check_image_features(model, test_loader, device, num_samples=10):
     if all_features.size(0) > 1:
         # 归一化特征
         normalized_features = nn.functional.normalize(all_features, p=2, dim=1)
-        # 计算相似度矩阵
+        # 计算相似度矩阵: (batch_size, batch_size)
         similarity_matrix = torch.mm(normalized_features, normalized_features.t())
         # 计算平均相似度（排除对角线）
         mask = ~torch.eye(similarity_matrix.size(0), dtype=torch.bool)

@@ -3,18 +3,29 @@
 用于训练和测试模型
 """
 import os
+import sys
 from pathlib import Path
+
+# 添加项目根目录到Python路径，以便正确导入模块
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+# 添加src目录到Python路径
+src_path = Path(__file__).parent.parent
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
 from torchvision import transforms
 from torch.utils.data import DataLoader, Subset
 
-from config.config import define_dev, read_config
-from pipeline.PipelineIC import PipelineIC
-from pipeline.data_processing import split_dataset, get_dataloaders
-from utils.vocabulary import Vocabulary
-from utils.collate_fn import collate_fn
-from data.Flickr8KDataset import Flickr8KDataset
-from data.TransformDatasetWrapper import TransformDatasetWrapper
+# 使用绝对导入，从src开始
+from src.config.config import define_dev, read_config
+from src.pipeline.PipelineIC import PipelineIC
+from src.pipeline.data_processing import split_dataset, get_dataloaders
+from src.utils.vocabulary import Vocabulary
+from src.utils.collate_fn import collate_fn
+from src.data.Flickr8KDataset import Flickr8KDataset
+from src.data.TransformDatasetWrapper import TransformDatasetWrapper
 
 
 def build_vocabulary_from_dataset(dataset):
@@ -274,6 +285,9 @@ def main():
     
     pipeline = PipelineIC(vocabulary=vocabulary, device=device)
     
+    # 获取模型类型（默认使用transformer）
+    model_type = flag_args.get('model_type', 'transformer')
+    
     # 构建模型（按照《Show and Tell》论文配置）
     # 词嵌入维度：512维（论文配置）
     # LSTM隐藏层：512维（论文配置）
@@ -281,14 +295,33 @@ def main():
     # 默认冻结CNN，先保证特征稳定；如需微调可在此改为False或提供配置开关
     freeze_cnn = True
     
-    pipeline.build_model(
-        vocab_size=len(vocabulary),
-        embed_dim=512,  # 论文：512维词嵌入
-        hidden_dim=512,  # 论文：512维LSTM隐藏层
-        num_layers=1,
-        dropout=0.5,  # 论文：使用dropout
-        freeze_encoder=freeze_cnn  # 论文：冻结CNN权重
-    )
+    if model_type == 'transformer':
+        # Transformer模型配置
+        pipeline.build_model(
+            vocab_size=len(vocabulary),
+            model_type='transformer',
+            d_model=512,
+            nhead=8,
+            num_encoder_layers=3,
+            num_decoder_layers=3,
+            dim_feedforward=2048,
+            dropout=0.1,
+            pos_dim=256,
+            feature_dim=256,
+            freeze_encoder=freeze_cnn,
+            threshold_mode='adaptive'
+        )
+    else:  # 'cnn_lstm'
+        # CNN-LSTM模型配置（按照《Show and Tell》论文）
+        pipeline.build_model(
+            vocab_size=len(vocabulary),
+            model_type='cnn_lstm',
+            embed_dim=512,  # 论文：512维词嵌入
+            hidden_dim=512,  # 论文：512维LSTM隐藏层
+            num_layers=1,
+            dropout=0.5,  # 论文：使用dropout
+            freeze_encoder=freeze_cnn  # 论文：冻结CNN权重
+        )
     
     if freeze_cnn:
         print("  ✓ CNN编码器已冻结，优先保护预训练特征")
@@ -339,11 +372,32 @@ def main():
         print("开始训练...")
         print("=" * 60)
         
-        # 如果找到了checkpoint，询问是否继续训练
+        # 如果找到了checkpoint，检查模型类型是否一致
         if checkpoint_path:
             print(f"\n检测到checkpoint: {checkpoint_path}")
-            print("将自动从checkpoint恢复训练")
-            print("如果不想从checkpoint恢复，请删除checkpoint目录或文件")
+            
+            # 检查checkpoint中的模型类型
+            try:
+                import torch
+                checkpoint = torch.load(checkpoint_path, map_location='cpu')
+                checkpoint_model_type = checkpoint.get('model_type', 'cnn_lstm')
+                
+                if checkpoint_model_type != model_type:
+                    print(f"\n⚠️  警告：配置的模型类型 ({model_type}) 与checkpoint中的模型类型 ({checkpoint_model_type}) 不一致！")
+                    print(f"   如果继续，将从checkpoint恢复 {checkpoint_model_type} 模型，而不是配置的 {model_type} 模型。")
+                    print(f"   如果要使用 {model_type} 模型，请：")
+                    print(f"   1. 删除checkpoint目录: {checkpoint_dir}")
+                    print(f"   2. 或者将配置文件中的 model_type 改为: {checkpoint_model_type}")
+                    print(f"\n   当前将使用checkpoint中的模型类型: {checkpoint_model_type}")
+                    # 更新model_type以匹配checkpoint
+                    model_type = checkpoint_model_type
+                else:
+                    print(f"   模型类型匹配: {model_type}")
+                    print("   将自动从checkpoint恢复训练")
+            except Exception as e:
+                print(f"   无法读取checkpoint信息: {e}")
+                print("   将从头开始训练")
+                checkpoint_path = None
         
         # 开始训练，传入checkpoint_path和checkpoint_dir
         train_results = pipeline.train(

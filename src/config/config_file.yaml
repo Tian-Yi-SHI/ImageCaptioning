@@ -8,6 +8,7 @@ folder_model : "./storage/model"
 
 ##################### Architecture #####################
 load_model_trained : False  # 设置为False重新训练，True跳过训练
+model_type : "transformer"  # 模型类型: "cnn_lstm" 或 "transformer"（默认使用transformer）
 
 ##################### Hyper Params #####################
 lr : 0.003  # 降低到0.003，更稳定的训练

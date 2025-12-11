@@ -312,21 +312,6 @@ def main():
             freeze_encoder=freeze_cnn,
             threshold_mode='adaptive'
         )
-    elif model_type == "nystrom":
-        pipeline.build_model(
-            vocab_size=len(vocabulary),
-            model_type='nystrom',
-            d_model=512,
-            nhead=8,
-            num_encoder_layers=3,
-            num_decoder_layers=3,
-            dim_feedforward=2048,
-            dropout=0.1,
-            pos_dim=256,
-            feature_dim=256,
-            freeze_encoder=freeze_cnn,
-            threshold_mode='adaptive'
-        )
     else:  # 'cnn_lstm'
         # CNN-LSTM模型配置（按照《Show and Tell》论文）
         pipeline.build_model(

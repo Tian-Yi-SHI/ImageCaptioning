@@ -138,6 +138,23 @@ class PipelineIC(Pipeline):
                     threshold_mode=threshold_mode
                 )
                 print(f"使用Transformer模型（位置编码：xy各{pos_dim}维，模长加权）")
+            elif model_type == "nystrom":
+                from models.NystromTransformer import NystromTransformerModel
+                self.model = NystromTransformerModel(
+                    vocab_size=vocab_size,
+                    d_model=d_model,
+                    nhead=nhead,
+                    num_encoder_layers=num_encoder_layers,
+                    num_decoder_layers=num_decoder_layers,
+                    dim_feedforward=dim_feedforward,
+                    dropout=dropout,
+                    max_caption_length=self.max_caption_length,
+                    pos_dim=pos_dim,
+                    feature_dim=feature_dim,
+                    freeze_encoder=freeze_encoder,
+                    threshold_mode=threshold_mode
+                )
+                print(f"使用Transformer模型（位置编码：Nystrom）")
             else:  # 'cnn_lstm'
                 self.model = ImageCaptionModel(
                     vocab_size=vocab_size,

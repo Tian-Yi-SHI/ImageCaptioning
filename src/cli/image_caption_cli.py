@@ -258,6 +258,7 @@ def main():
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
+        pin_memory=True,
         collate_fn=_collate_fn_wrapper
     )
     
@@ -266,6 +267,7 @@ def main():
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
+        pin_memory=True,
         collate_fn=_collate_fn_wrapper
     )
     
@@ -274,6 +276,7 @@ def main():
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
+        pin_memory=True,
         collate_fn=_collate_fn_wrapper
     )
     
@@ -301,6 +304,21 @@ def main():
         pipeline.build_model(
             vocab_size=len(vocabulary),
             model_type='transformer',
+            d_model=512,
+            nhead=8,
+            num_encoder_layers=3,
+            num_decoder_layers=3,
+            dim_feedforward=2048,
+            dropout=0.1,
+            pos_dim=256,
+            feature_dim=256,
+            freeze_encoder=freeze_cnn,
+            threshold_mode='adaptive'
+        )
+    elif model_type == "nystrom":
+        pipeline.build_model(
+            vocab_size=len(vocabulary),
+            model_type='nystrom',
             d_model=512,
             nhead=8,
             num_encoder_layers=3,

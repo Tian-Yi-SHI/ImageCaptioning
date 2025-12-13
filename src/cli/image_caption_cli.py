@@ -256,9 +256,9 @@ def main():
     train_loader = DataLoader(
         train_subset,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=num_workers,
-        pin_memory=True,
+        # pin_memory=True,
         collate_fn=_collate_fn_wrapper
     )
     
@@ -267,7 +267,7 @@ def main():
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True,
+        # pin_memory=True,
         collate_fn=_collate_fn_wrapper
     )
     
@@ -276,7 +276,7 @@ def main():
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True,
+        # pin_memory=True,
         collate_fn=_collate_fn_wrapper
     )
     
@@ -359,32 +359,32 @@ def main():
     print("\n[7/7] 开始训练和测试...")
     
     # 训练
-    model_path = os.path.join(folder_args['folder_model'], 'best_model.pth')
+    model_path = os.path.join(folder_args['folder_model'], 'test_model_nystrom_lr.pth')
     checkpoint_dir = os.path.join(folder_args['folder_model'], 'checkpoints')
     
     # 检查是否有checkpoint可以恢复训练
     checkpoint_path = None
-    if os.path.exists(checkpoint_dir):
-        # 查找最新的checkpoint文件
-        checkpoint_files = [f for f in os.listdir(checkpoint_dir) if f.startswith('checkpoint_epoch_') and f.endswith('.pth')]
-        if checkpoint_files:
-            # 按epoch编号排序，获取最新的
-            checkpoint_files.sort(key=lambda x: int(x.split('_')[2].split('.')[0]))
-            latest_checkpoint = checkpoint_files[-1]
-            checkpoint_path = os.path.join(checkpoint_dir, latest_checkpoint)
-            print(f"\n发现checkpoint: {checkpoint_path}")
-            print("可以选择从checkpoint恢复训练，或从头开始训练")
+    # if os.path.exists(checkpoint_dir):
+    #     # 查找最新的checkpoint文件
+    #     checkpoint_files = [f for f in os.listdir(checkpoint_dir) if f.startswith('checkpoint_epoch_') and f.endswith('.pth')]
+    #     if checkpoint_files:
+    #         # 按epoch编号排序，获取最新的
+    #         checkpoint_files.sort(key=lambda x: int(x.split('_')[2].split('.')[0]))
+    #         latest_checkpoint = checkpoint_files[-1]
+    #         checkpoint_path = os.path.join(checkpoint_dir, latest_checkpoint)
+    #         print(f"\n发现checkpoint: {checkpoint_path}")
+    #         print("可以选择从checkpoint恢复训练，或从头开始训练")
             
-            # 在继续训练前进行快速抽样检测
-            run_quick_sample_check(
-                pipeline=pipeline,
-                test_subset=test_subset,
-                num_workers=num_workers,
-                sample_count=10,
-                checkpoint_path=checkpoint_path,
-                model_path=model_path,
-                vocab_size=len(vocabulary)
-            )
+    #         # 在继续训练前进行快速抽样检测
+    #         run_quick_sample_check(
+    #             pipeline=pipeline,
+    #             test_subset=test_subset,
+    #             num_workers=num_workers,
+    #             sample_count=10,
+    #             checkpoint_path=checkpoint_path,
+    #             model_path=model_path,
+    #             vocab_size=len(vocabulary)
+    #         )
     
     if not flag_args.get('load_model_trained', False):
         print("\n" + "=" * 60)

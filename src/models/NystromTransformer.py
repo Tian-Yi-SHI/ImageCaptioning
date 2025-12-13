@@ -519,6 +519,8 @@ class NystromTransformerModel(nn.Module):
             
             # 采样下一个词（greedy decoding）
             next_word = torch.argmax(output, dim=1)  # (B,)
+            # probs = torch.softmax(output / temperature, dim=-1)  # 转换为概率  ####################
+            # next_word = torch.multinomial(probs, num_samples=1).squeeze(-1)  # 采样
             
             # 只保存还在生成的序列的词
             next_word = torch.where(continue_mask, next_word,

@@ -7,11 +7,11 @@ folder_test_log : "./storage/log"
 folder_model : "./storage/model"
 
 ##################### Architecture #####################
-load_model_trained : False  # 设置为False重新训练，True跳过训练
-model_type : "transformer"  # 模型类型: "cnn_lstm" 或 "transformer"（默认使用transformer）
+load_model_trained : True  # 设置为False重新训练，True跳过训练
+model_type : "nystrom"  # 模型类型: "cnn_lstm" 或 "transformer" 或nystrom（默认使用transformer）
 
 ##################### Hyper Params #####################
-lr : 0.003  # 降低到0.003，更稳定的训练
+lr : 0.0003  # 降低到0.003，更稳定的训练
 wd : 0.01
 batch_size : 64  # CPU上可以加大batch_size加快训练（如果内存允许）
-epoches : 25  # CPU训练，减少到25个epoch（但仍然需要充分训练）
+epoches : 50  # CPU训练，减少到25个epoch（但仍然需要充分训练）

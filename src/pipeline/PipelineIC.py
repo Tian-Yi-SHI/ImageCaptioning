@@ -641,6 +641,12 @@ class PipelineIC(Pipeline):
                 vocab_size=vocab_size,
                 max_caption_length=self.max_caption_length
             )
+        elif model_type == 'nystrom':
+            from models.NystromTransformer import NystromTransformerModel
+            self.model = NystromTransformerModel(
+                vocab_size=vocab_size,
+                max_caption_length=self.max_caption_length
+            )
         else:  # 'cnn_lstm'
             self.model = ImageCaptionModel(vocab_size=vocab_size, max_caption_length=self.max_caption_length)
         
@@ -686,6 +692,12 @@ class PipelineIC(Pipeline):
             from models.TransformerImageCaptionModel import TransformerImageCaptionModel
             # 使用默认参数构建Transformer模型
             self.model = TransformerImageCaptionModel(
+                vocab_size=vocab_size,
+                max_caption_length=self.max_caption_length
+            )
+        elif model_type == 'nystrom':
+            from models.NystromTransformer import NystromTransformerModel
+            self.model = NystromTransformerModel(
                 vocab_size=vocab_size,
                 max_caption_length=self.max_caption_length
             )
